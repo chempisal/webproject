@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ប្រព័ន្ធគ្រប់គ្រងទិន្នន័យសិស្ស</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;600;700&family=Moul&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Kantumruy Pro', sans-serif;
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+            transition: all 0.3s ease;
+        }
+        .khmer-title {
+            font-family: 'Moul', cursive;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* ទម្រង់ទូរស័ព្ទដៃ (Mobile View Mode) */
+        .mode-mobile {
+            max-width: 440px;
+            margin: 0 auto;
+            min-height: 100vh;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border-left: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+        }
+        /* ទម្រង់ Desktop App (Desktop View Mode) */
+        .mode-desktop {
+            max-width: 1024px;
+            margin: 20px auto;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+            border: 1px solid #cbd5e1;
+            height: calc(100vh - 40px) !important;
+        }
+        /* ទម្រង់ Web App (Full Screen) */
+        .mode-web {
+            max-width: 100%;
+            margin: 0;
+            border: none;
+            box-shadow: none;
+            height: 100vh;
+        }
+    </style>
+    
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogImhvb2wtU3R1ZGVudC1NYW5hZ2VtZW50IiwKICAic2hvcnRfbmFtZSI6ICJTVU0iLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI2Y4ZmFmYyIsCiAgInRoZW1lX2NvbG9yIjogIiMxZTQwYjYiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJodHRwczovL2Nkbi1pY29ucy1wbmcuZmxhdGljb24uY29tLzUxMi8yOTkxLzI5OTExMTAucG5nIiwKICAgICAgInNpemVzIjogIjUxMng1MTIiLAogICAgICAidHlwZSI6ICJpbWFnZS9wbmciCiAgICB9CiAgXQp9">
+</head>
+<body id="app-container" class="h-screen flex flex-col overflow-hidden bg-slate-50 mode-mobile">
+
+    <div class="bg-slate-900 text-white text-xs px-3 py-2 flex justify-between items-center z-50 shrink-0">
+        <div class="flex items-center gap-1.5">
+            <span>🖥️ ទម្រង់៖</span>
+            <select id="layout-view-mode" onchange="changeLayoutMode(this.value)" class="bg-slate-800 text-white border border-slate-700 rounded px-1.5 py-0.5 outline-none cursor-pointer">
+                <option value="mobile">Mobile App</option>
+                <option value="desktop">Desktop App</option>
+                <option value="web">Web App (ពេញអេក្រង់)</option>
+            </select>
+        </div>
+        <button id="pwa-install-btn" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-0.5 rounded font-medium flex items-center gap-1 transition-all">
+            📲 ដំឡើង App
+        </button>
+    </div>
+
+    <header class="bg-blue-600 pt-5 pb-4 px-4 text-white shadow-md flex flex-col items-center justify-center relative shrink-0">
+        <h1 class="khmer-title text-base text-yellow-300 drop-shadow mb-1">ប្រព័ន្ធគ្រប់គ្រងសិស្ស</h1>
+        <p class="text-xs opacity-90">គ្រប់គ្រងទិន្នន័យបានរហ័ស និងបត់បែនគ្រប់ឧបករណ៍</p>
+    </header>
+
+    <div class="flex bg-white border-b border-slate-200 sticky top-0 z-10 shrink-0">
+        <button id="tab-list-btn" onclick="switchTab('list')" class="flex-1 py-3 text-center font-semibold text-sm border-b-2 border-blue-600 text-blue-600 transition-all">
+            📋 បញ្ជីសិស្ស
+        </button>
+        <button id="tab-stats-btn" onclick="switchTab('stats')" class="flex-1 py-3 text-center font-semibold text-sm border-b-2 border-transparent text-slate-500 transition-all">
+            📊 ស្ថិតិសិស្ស
+        </button>
+    </div>
+
+    <main class="flex-1 overflow-y-auto p-4 pb-24 no-scrollbar">
+        
+        <div id="tab-list" class="space-y-4">
+            <div class="bg-white p-3 rounded-2xl shadow-sm space-y-3 border border-slate-100">
+                <div class="grid grid-cols-2 gap-2">
+                    <input type="text" id="search-name" oninput="filterStudents()" placeholder="🔍 ស្វែងរកតាមឈ្មោះ..." class="w-full p-2.5 text-xs bg-slate-100 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="search-class" oninput="filterStudents()" placeholder="🏫 ស្វែងរកតាមថ្នាក់..." class="w-full p-2.5 text-xs bg-slate-100 border-0 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                
+                <div class="grid grid-cols-4 gap-1.5 pt-1 text-center">
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] py-2 px-0.5 rounded-xl font-medium transition flex items-center justify-center gap-0.5 cursor-pointer">
+                        📤 Excel
+                    </button>
+                    <label class="bg-amber-600 hover:bg-amber-700 text-white text-[11px] py-2 px-0.5 rounded-xl font-medium transition flex items-center justify-center gap-0.5 cursor-pointer text-center">
+                        📥 Import
+                        <input type="file" id="import-excel" accept=".xlsx, .xls" onchange="importFromExcel()" class="hidden">
+                    </label>
+                    <button onclick="printData()" class="bg-slate-700 hover:bg-slate-800 text-white text-[11px] py-2 px-0.5 rounded-xl font-medium transition flex items-center justify-center gap-0.5 cursor-pointer">
+                        🖨️ ព្រីន
+                    </button>
+                    <button onclick="clearAllStudents()" class="bg-rose-600 hover:bg-rose-700 text-white text-[11px] py-2 px-0.5 rounded-xl font-medium transition flex items-center justify-center gap-0.5 cursor-pointer">
+                        🚨 លុបទាំងអស់
+                    </button>
+                </div>
+            </div>
+
+            <div id="sync-status" class="text-center text-[11px] text-slate-500 py-1 hidden"></div>
+
+            <div id="student-container" class="space-y-3"></div>
+        </div>
+
+        <div id="tab-stats" class="hidden space-y-4">
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-blue-50 border border-blue-100 p-3 rounded-2xl text-center">
+                    <p class="text-xs text-blue-600 font-medium">សិស្សសរុប</p>
+                    <p id="stat-total" class="text-2xl font-bold text-blue-900 mt-1">0</p>
+                </div>
+                <div class="bg-indigo-50 border border-indigo-100 p-3 rounded-2xl text-center">
+                    <p class="text-xs text-indigo-600 font-medium">ប្រុស (ប)</p>
+                    <p id="stat-male" class="text-2xl font-bold text-indigo-900 mt-1">0</p>
+                </div>
+                <div class="bg-pink-50 border border-pink-100 p-3 rounded-2xl text-center">
+                    <p class="text-xs text-pink-600 font-medium">ស្រី (ស)</p>
+                    <p id="stat-female" class="text-2xl font-bold text-pink-900 mt-1">0</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                <h3 class="font-bold text-sm text-slate-800 mb-3 flex items-center gap-2">📊 ចំនួនអាយុតាមឆ្នាំ</h3>
+                <div id="age-stats-list" class="space-y-2"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <button onclick="toggleModal(true)" class="fixed bottom-6 right-6 bg-blue-600 hover:bg-blue-700 text-white w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-2xl z-20 transition-transform active:scale-95 cursor-pointer">
+        ＋
+    </button>
+
+    <div id="student-modal" class="fixed inset-0 bg-black/50 z-50 flex items-end justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-md rounded-t-3xl p-5 space-y-4 max-h-[85vh] overflow-y-auto no-scrollbar shadow-2xl transform translate-y-full transition-transform duration-300">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h2 id="modal-title" class="font-bold text-base text-slate-800">📋 បន្ថែមព័ត៌មានសិស្ស</h2>
+                <button onclick="toggleModal(false)" class="text-slate-400 hover:text-slate-600 text-xl cursor-pointer">✕</button>
+            </div>
+
+            <form id="student-form" onsubmit="saveStudent(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="student-idx">
+                
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-600 mb-1">អត្ថលេខ *</label>
+                        <input type="text" id="stu-id" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 mb-1">ឈ្មោះសិស្ស *</label>
+                        <input type="text" id="stu-name" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-600 mb-1">ភេទ *</label>
+                        <select id="stu-gender" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                            <option value="ប្រុស">ប្រុស</option>
+                            <option value="ស្រី">ស្រី</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 mb-1">ថ្នាក់ទី *</label>
+                        <input type="text" id="stu-class" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 mb-1">ថ្ងៃខែឆ្នាំកំណើត *</label>
+                    <input type="date" id="stu-dob" required class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 mb-1">អាសយដ្ឋានសិស្ស</label>
+                    <textarea id="stu-address" rows="1" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 pt-2 text-blue-600 font-semibold">ព័ត៌មានអាណាព្យាបាល</div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-600 mb-1">ឪពុកឈ្មោះ</label>
+                        <input type="text" id="father-name" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 mb-1">មុខរបរឪពុក</label>
+                        <input type="text" id="father-job" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-600 mb-1">លេខទូរស័ព្ទឪពុក</label>
+                    <input type="tel" id="father-phone" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-slate-600 mb-1">ម្ដាយឈ្មោះ</label>
+                        <input type="text" id="mother-name" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 mb-1">មុខរបរម្ដាយ</label>
+                        <input type="text" id="mother-job" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-slate-600 mb-1">លេខទូរស័ព្ទម្ដាយ</label>
+                    <input type="tel" id="mother-phone" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 mb-1">អាសយដ្ឋានឪពុកម្ដាយ</label>
+                    <textarea id="parents-address" rows="1" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl font-semibold text-sm transition mt-2 shadow-md cursor-pointer">
+                    💾 រក្សាទុកទិន្នន័យ
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // -------------------------------------------------------------
+        // CONFIGURATION: ភ្ជាប់ទៅកាន់ GOOGLE SHEETS API
+        // -------------------------------------------------------------
+        // សូមជំនួស URL ខាងក្រោមជាមួយនឹង Web App URL ដែលបានមកពីការ Deploy Google Apps Script របស់អ្នក
+        const API_URL = "https://script.google.com/macros/s/YOUR_DEPLOYED_SCRIPT_ID/exec"; 
+
+        // ផ្ទុកទិន្នន័យគំរូដំបូង
+        let students = JSON.parse(localStorage.getItem('student_db')) || [
+            { id: "STU001", name: "ស៊ុយ សុភ័ក្ត្រ", gender: "ប្រុស", dob: "2010-05-12", class: "10A", address: "ភ្នំពេញ", fatherName: "ស៊ុយ ចាន់", fatherJob: "អាជីវករ", fatherPhone: "012345678", motherName: "គឹម ឡាន", motherJob: "មេផ្ទះ", motherPhone: "098765432", parentsAddress: "ភ្នំពេញ" },
+            { id: "STU002", name: "ចាន់ ស្រីនាថ", gender: "ស្រី", dob: "2009-11-23", class: "11B", address: "កណ្តាល", fatherName: "ចាន់ ធារ៉ា", fatherJob: "គ្រូបង្រៀន", fatherPhone: "011223344", motherName: "សោក ស្រី", motherJob: "អាជីវករ", motherPhone: "055667788", parentsAddress: "កណ្តាល" }
+        ];
+
+        // មុខងារផ្លាស់ប្តូរទម្រង់ Layout (Mobile, Desktop, Web)
+        function changeLayoutMode(mode) {
+            const container = document.getElementById('app-container');
+            container.className = "h-screen flex flex-col overflow-hidden transition-all duration-300 ";
+            
+            if (mode === 'mobile') {
+                container.classList.add('mode-mobile');
+            } else if (mode === 'desktop') {
+                container.classList.add('mode-desktop');
+            } else if (mode === 'web') {
+                container.classList.add('mode-web');
+            }
+        }
+
+        // មុខងារដំឡើងប្រព័ន្ធជា App លើ Device (PWA Features)
+        let deferredPrompt;
+        const pwaInstallBtn = document.getElementById('pwa-install-btn');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            pwaInstallBtn.classList.remove('hidden');
+        });
+
+        pwaInstallBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    console.log('User accepted the install prompt');
+                }
+                deferredPrompt = null;
+                pwaInstallBtn.classList.add('hidden');
+            } else {
+                alert("កម្មវិធីនេះត្រូវបានដំឡើងរួចរាល់ ឬកម្មវិធីរុករករបស់អ្នកមិនទាន់គាំទ្រមុខងារនេះឡើយ។");
+            }
+        });
+
+        // មុខងារបញ្ជូន ឬធ្វើសមកាលកម្មទិន្នន័យទៅ Google Sheets
+        async function syncWithGoogleSheets(action, data = null) {
+            if (!API_URL || API_URL.includes("YOUR_DEPLOYED_SCRIPT_ID")) return;
+            
+            const statusDiv = document.getElementById('sync-status');
+            statusDiv.classList.remove('hidden');
+            statusDiv.innerText = "⏳ កំពុងធ្វើសមកាលកម្មជាមួយ Google Sheets...";
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // បិទ CORS សម្រាប់ទម្រង់ HTML Simple Request
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: action, data: data, allData: students })
+                });
+                statusDiv.innerText = "✅ ធ្វើសមកាលកម្មទិន្នន័យជោគជ័យ!";
+                setTimeout(() => statusDiv.classList.add('hidden'), 3000);
+            } catch (error) {
+                console.error("Sync Error: ", error);
+                statusDiv.innerText = "❌ បរាជ័យក្នុងការភ្ជាប់ទៅ Google Sheets ប៉ុន្តែរក្សាទុកលើ Local រួចរាល់។";
+            }
+        }
+
+        // ប្តូរ Tab
+        function switchTab(tab) {
+            const listTab = document.getElementById('tab-list');
+            const statsTab = document.getElementById('tab-stats');
+            const listBtn = document.getElementById('tab-list-btn');
+            const statsBtn = document.getElementById('tab-stats-btn');
+
+            if (tab === 'list') {
+                listTab.classList.remove('hidden');
+                statsTab.classList.add('hidden');
+                listBtn.className = "flex-1 py-3 text-center font-semibold text-sm border-b-2 border-blue-600 text-blue-600 transition-all cursor-pointer";
+                statsBtn.className = "flex-1 py-3 text-center font-semibold text-sm border-b-2 border-transparent text-slate-500 transition-all cursor-pointer";
+            } else {
+                listTab.classList.add('hidden');
+                statsTab.classList.remove('hidden');
+                listBtn.className = "flex-1 py-3 text-center font-semibold text-sm border-b-2 border-transparent text-slate-500 transition-all cursor-pointer";
+                statsBtn.className = "flex-1 py-3 text-center font-semibold text-sm border-b-2 border-blue-600 text-blue-600 transition-all cursor-pointer";
+                renderStats();
+            }
+        }
+
+        // បង្ហាញ/លាក់ Modal Form
+        function toggleModal(show, index = null) {
+            const modal = document.getElementById('student-modal');
+            const content = modal.querySelector('div');
+            const form = document.getElementById('student-form');
+            
+            if (show) {
+                form.reset();
+                document.getElementById('student-idx').value = index !== null ? index : '';
+                document.getElementById('modal-title').innerText = index !== null ? "📝 កែប្រែព័ត៌មានសិស្ស" : "📋 បន្ថែមព័ត៌មានសិស្ស";
+                
+                if (index !== null) {
+                    const s = students[index];
+                    document.getElementById('stu-id').value = s.id;
+                    document.getElementById('stu-name').value = s.name;
+                    document.getElementById('stu-gender').value = s.gender;
+                    document.getElementById('stu-dob').value = s.dob;
+                    document.getElementById('stu-class').value = s.class;
+                    document.getElementById('stu-address').value = s.address;
+                    document.getElementById('father-name').value = s.fatherName;
+                    document.getElementById('father-job').value = s.fatherJob;
+                    document.getElementById('father-phone').value = s.fatherPhone;
+                    document.getElementById('mother-name').value = s.motherName;
+                    document.getElementById('mother-job').value = s.motherJob;
+                    document.getElementById('mother-phone').value = s.motherPhone;
+                    document.getElementById('parents-address').value = s.parentsAddress;
+                }
+
+                modal.classList.remove('hidden');
+                setTimeout(() => {
+                    modal.classList.remove('opacity-0');
+                    content.classList.remove('translate-y-full');
+                }, 50);
+            } else {
+                modal.classList.add('opacity-0');
+                content.classList.add('translate-y-full');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+        }
+
+        // រក្សាទុកទិន្នន័យ
+        function saveStudent(e) {
+            e.preventDefault();
+            const idx = document.getElementById('student-idx').value;
+            
+            const studentData = {
+                id: document.getElementById('stu-id').value,
+                name: document.getElementById('stu-name').value,
+                gender: document.getElementById('stu-gender').value,
+                dob: document.getElementById('stu-dob').value,
+                class: document.getElementById('stu-class').value,
+                address: document.getElementById('stu-address').value,
+                fatherName: document.getElementById('father-name').value,
+                fatherJob: document.getElementById('father-job').value,
+                fatherPhone: document.getElementById('father-phone').value,
+                motherName: document.getElementById('mother-name').value,
+                motherJob: document.getElementById('mother-job').value,
+                motherPhone: document.getElementById('mother-phone').value,
+                parentsAddress: document.getElementById('parents-address').value,
+            };
+
+            if (idx === '') {
+                students.push(studentData);
+                syncWithGoogleSheets('insert', studentData);
+            } else {
+                students[idx] = studentData;
+                syncWithGoogleSheets('update', studentData);
+            }
+
+            saveToLocalStorage();
+            renderStudents();
+            toggleModal(false);
+        }
+
+        // លុបទិន្នន័យសិស្សម្នាក់ៗ
+        function deleteStudent(index) {
+            if (confirm("តើអ្នកពិតជាចង់លុបទិន្នន័យសិស្សនេះមែនទេ?")) {
+                const deletedStudent = students[index];
+                students.splice(index, 1);
+                saveToLocalStorage();
+                renderStudents();
+                syncWithGoogleSheets('delete', deletedStudent);
+            }
+        }
+
+        // 🚨 មុខងារលុបទិន្នន័យទាំងអស់ (Clear All Students)
+        function clearAllStudents() {
+            if (confirm("🚨 ព្រមាន៖ តើអ្នកពិតជាចង់លុបទិន្នន័យសិស្សទាំងអស់ចេញពីប្រព័ន្ធមែនទេ? វានឹងមិនអាចទាញត្រឡប់មកវិញបានឡើយ!")) {
+                students = [];
+                saveToLocalStorage();
+                renderStudents();
+                syncWithGoogleSheets('clearAll', null);
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('student_db', JSON.stringify(students));
+        }
+
+        // គណនាអាយុ
+        function calculateAge(dobString) {
+            if (!dobString) return 0;
+            const today = new Date();
+            const birthDate = new Date(dobString);
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+            return age;
+        }
+
+        // បង្ហាញបញ្ជីសិស្ស
+        function renderStudents(filteredData = students) {
+            const container = document.getElementById('student-container');
+            container.innerHTML = '';
+
+            if (filteredData.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">រកមិនឃើញទិន្នន័យសិស្សទេ!</div>`;
+                return;
+            }
+
+            filteredData.forEach((s) => {
+                const globalIndex = students.indexOf(s);
+                const card = document.createElement('div');
+                card.className = "bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-2 relative";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full">${s.id}</span>
+                            <span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full ml-1">ថ្នាក់: ${s.class}</span>
+                            <h3 class="font-bold text-sm text-slate-800 mt-1">${s.name} (${s.gender})</h3>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="toggleModal(true, ${globalIndex})" class="text-blue-500 bg-blue-50 p-2 rounded-xl text-xs active:scale-95 cursor-pointer">✏️</button>
+                            <button onclick="deleteStudent(${globalIndex})" class="text-rose-500 bg-rose-50 p-2 rounded-xl text-xs active:scale-95 cursor-pointer">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-y-1 text-[11px] text-slate-600 border-t border-slate-50 pt-2">
+                        <div>🎂 ថ្ងៃកំណើត: <span class="font-medium text-slate-800">${s.dob}</span></div>
+                        <div>🧍 អាយុ: <span class="font-medium text-slate-800">${calculateAge(s.dob)} ឆ្នាំ</span></div>
+                        <div class="col-span-2">📍 អាសយដ្ឋាន: <span class="font-medium text-slate-800">${s.address || '-'}</span></div>
+                    </div>
+                    <div class="bg-slate-50 p-2 rounded-xl text-[10px] text-slate-500 space-y-1 mt-1">
+                        <div>👨 ឪពុក: <span class="font-medium text-slate-700">${s.fatherName || '-'}</span> (${s.fatherJob || '-'}) - 📞 ${s.fatherPhone || '-'}</div>
+                        <div>👩 ម្ដាយ: <span class="font-medium text-slate-700">${s.motherName || '-'}</span> (${s.motherJob || '-'}) - 📞 ${s.motherPhone || '-'}</div>
+                        <div class="text-[9px] border-t border-slate-200/60 pt-1">🏠 អាសយដ្ឋានមាតាបិតា: ${s.parentsAddress || '-'}</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // ស្វែងរកតាមឈ្មោះ និងថ្នាក់
+        function filterStudents() {
+            const nameQuery = document.getElementById('search-name').value.toLowerCase();
+            const classQuery = document.getElementById('search-class').value.toLowerCase();
+
+            const filtered = students.filter(s => {
+                const matchesName = s.name.toLowerCase().includes(nameQuery);
+                const matchesClass = s.class.toLowerCase().includes(classQuery);
+                return matchesName && matchesClass;
+            });
+
+            renderStudents(filtered);
+        }
+
+        // បង្ហាញផ្នែកស្ថិតិ
+        function renderStats() {
+            const total = students.length;
+            const male = students.filter(s => s.gender === 'ប្រុស').length;
+            const female = students.filter(s => s.gender === 'ស្រី').length;
+
+            document.getElementById('stat-total').innerText = total;
+            document.getElementById('stat-male').innerText = male;
+            document.getElementById('stat-female').innerText = female;
+
+            const ageCounts = {};
+            students.forEach(s => {
+                const age = calculateAge(s.dob);
+                if (age > 0) {
+                    ageCounts[age] = (ageCounts[age] || 0) + 1;
+                }
+            });
+
+            const ageStatsList = document.getElementById('age-stats-list');
+            ageStatsList.innerHTML = '';
+
+            if (Object.keys(ageCounts).length === 0) {
+                ageStatsList.innerHTML = `<p class="text-center text-xs text-slate-400 py-4">គ្មានទិន្នន័យអាយុ</p>`;
+                return;
+            }
+
+            Object.keys(ageCounts).sort((a, b) => a - b).forEach(age => {
+                const count = ageCounts[age];
+                const percentage = total > 0 ? (count / total) * 100 : 0;
+                
+                const row = document.createElement('div');
+                row.className = "space-y-1";
+                row.innerHTML = `
+                    <div class="flex justify-between text-xs font-medium text-slate-700">
+                        <span>🧒 អាយុ ${age} ឆ្នាំ</span>
+                        <span>${count} នាក់ (${percentage.toFixed(0)}%)</span>
+                    </div>
+                    <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div class="bg-blue-500 h-full rounded-full" style="width: ${percentage}%"></div>
+                    </div>
+                `;
+                ageStatsList.appendChild(row);
+            });
+        }
+
+        // ទាញទិន្នន័យចេញជា Excel
+        function exportToExcel() {
+            if(students.length === 0) return alert("គ្មានទិន្នន័យសម្រាប់ Export ទេ!");
+            
+            const excelData = students.map(s => ({
+                "អត្ថលេខ": s.id,
+                "ឈ្មោះសិស្ស": s.name,
+                "ភេទ": s.gender,
+                "ថ្ងៃខែឆ្នាំកំណើត": s.dob,
+                "ថ្នាក់ទី": s.class,
+                "អាសយដ្ឋាន": s.address,
+                "ឪពុកឈ្មោះ": s.fatherName,
+                "មុខរបរឪពុក": s.fatherJob,
+                "លេខទូរស័ព្ទឪពុក": s.fatherPhone,
+                "ម្ដាយឈ្មោះ": s.motherName,
+                "មុខរបរម្ដាយ": s.motherJob,
+                "លេខទូរស័ព្ទម្ដាយ": s.motherPhone,
+                "អាសយដ្ឋានឪពុកម្ដាយ": s.parentsAddress
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "បញ្ជីសិស្ស");
+            XLSX.writeFile(workbook, `បញ្ជីសិស្ស_${new Date().toLocaleDateString()}.xlsx`);
+        }
+
+        // បញ្ចូលទិន្នន័យពី Excel
+        function importFromExcel() {
+            const fileInput = document.getElementById('import-excel');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                if(jsonData.length === 0) {
+                    alert("ឯកសារគ្មានទិន្នន័យទេ!");
+                    return;
+                }
+
+                jsonData.forEach(row => {
+                    students.push({
+                        id: row["អត្ថលេខ"] || "STU-" + Math.floor(Math.random()*1000),
+                        name: row["ឈ្មោះសិស្ស"] || "មិនស្គាល់ឈ្មោះ",
+                        gender: row["ភេទ"] || "ប្រុស",
+                        dob: row["ថ្ងៃខែឆ្នាំកំណើត"] || "2010-01-01",
+                        class: row["ថ្នាក់ទី"] || "មិនច្បាស់",
+                        address: row["អាសយដ្ឋាន"] || "",
+                        fatherName: row["ឪពុកឈ្មោះ"] || "",
+                        fatherJob: row["មុខរបរឪពុក"] || "",
+                        fatherPhone: row["លេខទូរស័ព្ទឪពុក"] || "",
+                        motherName: row["ម្ដាយឈ្មោះ"] || "",
+                        motherJob: row["មុខរបរម្ដាយ"] || "",
+                        motherPhone: row["លេខទូរស័ព្ទម្ដាយ"] || "",
+                        parentsAddress: row["អាសយដ្ឋានឪពុកម្ដាយ"] || ""
+                    });
+                });
+
+                saveToLocalStorage();
+                renderStudents();
+                syncWithGoogleSheets('import', null);
+                alert("បានបញ្ចូលទិន្នន័យដោយជោគជ័យ!");
+                fileInput.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // ព្រីនទិន្នន័យ
+        function printData() {
+            let printWindow = window.open('', '', 'height=600,width=900');
+            printWindow.document.write('<html><head><title>ព្រីនបញ្ជីសិស្ស</title>');
+            printWindow.document.write('<style>body{font-family:"Kantumruy Pro", sans-serif; padding:20px;} table{width:100%; border-collapse:collapse; margin-top:20px;} th, td{border:1px solid #ddd; padding:8px; text-align:left; font-size:11px;} th{background-color:#f2f2f2;} h2{text-align:center; font-family:"Moul", cursive; font-size:16px;}</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<h2>របាយការណ៍បញ្ជីសិស្សសរុប</h2>');
+            printWindow.document.write('<table><tr><th>អត្ថលេខ</th><th>ឈ្មោះ</th><th>ភេទ</th><th>ថ្ងៃកំណើត</th><th>ថ្នាក់</th><th>អាសយដ្ឋាន</th><th>ឪពុក</th><th>លេខទូរស័ព្ទ</th><th>ម្ដាយ</th><th>លេខទូរស័ព្ទ</th></tr>');
+            
+            students.forEach(s => {
+                printWindow.document.write(`<tr>
+                    <td>${s.id}</td>
+                    <td>${s.name}</td>
+                    <td>${s.gender}</td>
+                    <td>${s.dob}</td>
+                    <td>${s.class}</td>
+                    <td>${s.address || '-'}</td>
+                    <td>${s.fatherName || '-'}</td>
+                    <td>${s.fatherPhone || '-'}</td>
+                    <td>${s.motherName || '-'}</td>
+                    <td>${s.motherPhone || '-'}</td>
+                </tr>`);
+            });
+            
+            printWindow.document.write('</table></body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        }
+
+        // ដំណើរការដំបូងពេលបើក App
+        renderStudents();
+    </script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'student-db-v1';
+                    const ASSETS = [ './', './index.html' ];
+                    self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(ASSETS))); });
+                    self.addEventListener('fetch', e => { e.respondWith(caches.match(e.request).then(r => r || fetch(e.request))); });
+                `;
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration failed:', err));
+            });
+        }
+    </script>
+</body>
+</html>
